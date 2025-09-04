@@ -1,4 +1,7 @@
 mail-list.erpslick.com {
-    reverse_proxy /resend-service/* resend-service:4000
+     # Handle resend-service routes - strip the /resend-service prefix
+    handle_path /resend-service/* {
+        reverse_proxy resend-service:4000
+    }
     reverse_proxy app:9000
 }
