@@ -1,3 +1,4 @@
 mail-list.erpslick.com {
+    reverse_proxy /resend-service/* resend-service:4000
     reverse_proxy app:9000
 }

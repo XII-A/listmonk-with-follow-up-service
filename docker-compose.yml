@@ -65,6 +65,7 @@ services:
     restart: unless-stopped
     depends_on:
       - app
+      - resend-service
     networks:
       - listmonk
     ports:
@@ -74,6 +75,21 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
+  resend-service:
+    build:
+      context: ./resend-service
+      dockerfile: Dockerfile
+    container_name: resend_service
+    restart: unless-stopped
+    networks:
+      - listmonk
+    ports:
+      - "127.0.0.1:4000:4000"
+    depends_on:
+      - app
+    environment:
+      - NODE_ENV=production
+      - LISTMONK_AUTH_TOKEN=${LISTMONK_AUTH_TOKEN}
 
 networks:
   listmonk:
