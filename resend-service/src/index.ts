@@ -95,49 +95,62 @@ const getSubscribersWhoDidNotOpenCampaign = async (
   campaignId: number,
   listIds: number[]
 ) => {
-  // this will get all subscribers who did not open the campaign
-  // * Note: this seams to be off by a couple of thousands and I don't know why.
+  let allSubscribers: any[] = [];
+  let page = 1;
+  const perPage = 1000; // Process in smaller batches
 
-  const sqlQuery = `NOT EXISTS(
-  SELECT 1 FROM campaign_views
-  WHERE campaign_views.subscriber_id=subscribers.id
-  AND campaign_views.campaign_id=${campaignId}
-)`;
+  while (true) {
+    const sqlQuery = `NOT EXISTS(
+      SELECT 1 FROM campaign_views
+      WHERE campaign_views.subscriber_id=subscribers.id
+      AND campaign_views.campaign_id=${campaignId}
+    )`;
 
-  let url = `${API_URL}subscribers?query=${encodeURIComponent(
-    sqlQuery
-  )}&per_page=all`;
+    let url = `${API_URL}subscribers?query=${encodeURIComponent(
+      sqlQuery
+    )}&page=${page}&per_page=${perPage}`;
 
-  if (listIds.length > 0) {
-    url += listIds.map((listId) => `&list_id=${listId}`).join("");
-  }
-
-  const subscribersData: SubscribersResponse = await fetch(url, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Basic ${basicAuth}`,
-    },
-  }).then((res) => {
-    if (!res.ok) {
-      throw new Error(
-        `Error fetching subscribers: ${res.statusText}: ${res.status}`
-      );
+    if (listIds.length > 0) {
+      url += listIds.map((listId) => `&list_id=${listId}`).join("");
     }
-    return res.json();
-  });
 
-  if (!subscribersData || !subscribersData.data) {
-    throw new Error("Invalid response structure from subscribers API");
+    const subscribersData: SubscribersResponse = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Basic ${basicAuth}`,
+      },
+    }).then((res) => {
+      if (!res.ok) {
+        throw new Error(
+          `Error fetching subscribers: ${res.statusText}: ${res.status}`
+        );
+      }
+      return res.json();
+    });
+
+    if (!subscribersData.data || subscribersData.data.results.length === 0) {
+      break;
+    }
+
+    allSubscribers = allSubscribers.concat(subscribersData.data.results);
+
+    // Check if we've fetched all subscribers
+    if (subscribersData.data.results.length < perPage) {
+      break;
+    }
+
+    page++;
+
+    // Small delay between batches to avoid overwhelming the server
+    await new Promise((resolve) => setTimeout(resolve, 100));
   }
-
-  const subscribers = subscribersData.data.results;
 
   console.log(
-    `Found ${subscribers.length} subscribers who did not open campaign ${campaignId}.`
+    `Found ${allSubscribers.length} subscribers who did not open campaign ${campaignId}.`
   );
 
-  return subscribers;
+  return allSubscribers;
 };
 
 const createFollowUpList = async (
