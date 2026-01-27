@@ -14,7 +14,6 @@ const env = process.env as any;
 config({ path: ".env.development" });
 const ROOT_URL = "http://app:9000";
 const API_URL = `${ROOT_URL}/api/`;
-// const API_URL = "https://mail-list.erpslick.com/api/";
 const TOKEN = env.LISTMONK_AUTH_TOKEN;
 const API_USERNAME = "resendCampaignToUnopeners";
 const basicAuth = Buffer.from(`${API_USERNAME}:${TOKEN}`).toString("base64");
@@ -292,6 +291,10 @@ const resendService = async (campaignId: number) => {
     const followUpCampaign = await createFollowUpCampaign(
       campaign,
       followUpList.id,
+    );
+
+    console.log(
+      `✓ Successfully created follow-up campaign for ${totalSubscribers} subscribers`,
     );
   } catch (error) {
     console.error("Error in main function:", error);
