@@ -13,6 +13,7 @@ import express from "express";
 const env = process.env as any;
 config({ path: ".env.development" });
 const ROOT_URL = "http://app:9000";
+// const ROOT_URL = "https://mail-list.erpslick.com";
 const API_URL = `${ROOT_URL}/api/`;
 const TOKEN = env.LISTMONK_AUTH_TOKEN;
 const API_USERNAME = "resendCampaignToUnopeners";
@@ -98,13 +99,22 @@ const getSubscribersWhoDidNotOpenCampaign = async function* (
     }
 
     const batch = subscribersData.data.results;
+    // ensure that the batch only contains unique ids
+    const uniqueIds = [...new Set(batch.map((subscriber) => subscriber.id))];
+
+    if (uniqueIds.length !== batch.length) {
+      console.warn(
+        `Warning: batch contains duplicate subscriber IDs. Unique IDs: ${uniqueIds.length}, Batch size: ${batch.length}`,
+      );
+    }
+
     totalProcessed += batch.length;
 
     console.log(
       `Fetched batch ${page}: ${batch.length} subscribers (total: ${totalProcessed})`,
     );
 
-    yield batch;
+    yield uniqueIds;
 
     if (batch.length < perPage) {
       break;
@@ -233,7 +243,7 @@ const resendService = async (campaignId: number) => {
 
     const followUpList = followUpListResponse.data;
     console.log(
-      `Created follow-up list: ${followUpList.name} (${followUpList.id})`,
+      `Created follow-up list: ${followUpList.name} (${followUpList.id}) for campaign: ${campaign.name} (${campaign.id})`,
     );
 
     // Process subscribers in batches
@@ -250,13 +260,14 @@ const resendService = async (campaignId: number) => {
           Authorization: `Basic ${basicAuth}`,
         },
         body: JSON.stringify({
-          ids: subscriberBatch.map((subscriber: any) => subscriber.id),
+          ids: subscriberBatch,
           action: "add",
           target_list_ids: [followUpList.id],
           status: "confirmed",
         }),
       }).then((res) => {
         if (!res.ok) {
+          console.log("e", res);
           throw new Error(
             `Error adding subscribers to follow-up list: ${res.statusText}: ${res.status}`,
           );
@@ -266,7 +277,7 @@ const resendService = async (campaignId: number) => {
 
       totalSubscribers += subscriberBatch.length;
       console.log(
-        `Added batch of ${subscriberBatch.length} subscribers to follow-up list (total: ${totalSubscribers})`,
+        `Added batch of ${subscriberBatch.length} subscribers to follow-up list (total: ${totalSubscribers}) for campaign: ${campaign.name} (${campaign.id})...`,
       );
     }
 
