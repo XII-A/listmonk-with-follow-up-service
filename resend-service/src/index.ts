@@ -336,5 +336,5 @@ app.get("/", (req, res) => {
 });
 
 app.listen(4000, () => {
-  console.log("resend service V2 running on port 4000");
+  console.log("resend service V3 running on port 4000");
 });
